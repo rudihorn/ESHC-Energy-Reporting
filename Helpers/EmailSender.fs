@@ -4,7 +4,7 @@ open System.Net.Mail
 open System.Net
 open Microsoft.Extensions.Configuration
 
-type client = {
+type Client = {
     smtpClient : SmtpClient;
     from : string;
 }
@@ -18,7 +18,7 @@ let client (config : IConfiguration) =
     client.EnableSsl <- true
     { smtpClient = client; from = config.["Email:From"] }
 
-type mail = {
+type Email = {
     subject : string;
     recipient : string;
     body : string;

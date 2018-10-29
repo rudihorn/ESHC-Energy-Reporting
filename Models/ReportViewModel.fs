@@ -3,6 +3,7 @@ namespace EnergyReporting
 open System
 open EnergyReporting.Database
 open Helpers.MeterData
+open Helpers.EmailSender
 
 type AdminList = {
     auth : MasterAuth;
@@ -19,17 +20,11 @@ type FlatWarnLevel =
     | Alert of string
     | StepIn
 
-type FlatEmail = {
-    email : string;
-    subject : string;
-    body : string;
-}
-
 type FlatStatus = {
     flat : string;
     meterStatus : FlatMeterStatus;
     lastReminderSent : DateTime;
-    emails : FlatEmail list;
+    emails : Email list;
     warnLevel : FlatWarnLevel;
 }
 

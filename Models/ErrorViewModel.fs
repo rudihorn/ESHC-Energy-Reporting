@@ -1,7 +1,5 @@
 namespace EnergyReporting
 
-open System
-
 type ErrorViewModel private () =
     member val RequestId : string = null with get, set
 

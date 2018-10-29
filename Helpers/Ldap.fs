@@ -54,6 +54,9 @@ module EnergyReporting.Helpers.Ldap
         else 
             None
 
+    let serializeFlat (bld, flat, room) = 
+        sprintf "%02d/%02d" bld flat
+
     let users (config : config) =
         let attr (entry : LdapAttributeSet) name = 
             let prop = config.[sprintf "LDAP:Properties:%s" name]

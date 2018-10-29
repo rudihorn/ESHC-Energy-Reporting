@@ -7,7 +7,6 @@ open Microsoft.Extensions.Configuration
 open EnergyReporting
 open EnergyReporting.Helpers
 open EnergyReporting.Database
-open Microsoft.AspNetCore.Mvc.Routing
 
 type ReportingController (energy) =
     inherit Controller()

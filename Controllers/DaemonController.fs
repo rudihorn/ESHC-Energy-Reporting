@@ -1,18 +1,16 @@
 namespace EnergyReporting.Controllers
 
 open System
-(* open System.DirectoryServices.Protocols *)
 open System.Linq
 open System.Web
 open Microsoft.AspNetCore.Mvc
 open Microsoft.Extensions.Configuration
 open EnergyReporting
-open EnergyReporting.Helpers
-open EnergyReporting.Helpers.EmailTemplate
 open EnergyReporting.Database
-open EnergyReporting.Helpers.Ldap
-open EnergyReporting.Helpers.MeterData
 open EnergyReporting.Helpers
+open EnergyReporting.Helpers.Ldap
+open EnergyReporting.Helpers.EmailTemplate
+open EnergyReporting.Helpers.MeterData
 open EnergyReporting.Helpers.EmailSender;
 
 
@@ -20,16 +18,6 @@ type DaemonController (config, energy) =
     inherit Controller()
     member val Configuration : IConfiguration = config with get, set
     member val EnergyDatabase : EnergyDatabase = energy with get,set
-
-
-    (*
-    member private this.SendEmails emails = 
-        ()
-    *)
-
-    member private this.SerializeFlat (bld, flat, room) = 
-        sprintf "%02d/%02d" bld flat
-
 
     member this.TestEmail email = 
         let client = EmailSender.client this.Configuration
@@ -47,12 +35,12 @@ type DaemonController (config, energy) =
             meterStatus = UnreportedMeters [];
             warnLevel = sprintf "Unreported Meters" |> Alert;
             emails = [{
-                email = "test@example.com";
+                recipient = "test@example.com";
                 subject = "Energy email";
                 body = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
             };
             {
-                email = "test@example.com";
+                recipient = "test@example.com";
                 subject = "Energy email";
                 body = "Lorem ipsum dolor sit amet, consectetur adipisicing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.";
             }];
@@ -89,6 +77,7 @@ type DaemonController (config, energy) =
             user
 
         let emailConfig = ConfigHelper.emailConfig this.Configuration
+        let emailClient = EmailSender.client this.Configuration
         let policyConfig = ConfigHelper.policyConfig this.Configuration
 
 
@@ -103,7 +92,7 @@ type DaemonController (config, energy) =
         let users = Ldap.users this.Configuration 
         let users = 
             users 
-            |> List.choose (fun u -> Ldap.normalizeFlat u.room |> Option.map (fun f -> (u,this.SerializeFlat f)))
+            |> List.choose (fun u -> Ldap.normalizeFlat u.room |> Option.map (fun f -> (u,Ldap.serializeFlat f)))
 
         let flatUsers flat = users |> List.filter (fun (_,sf) -> flat = sf)
 
@@ -125,7 +114,7 @@ type DaemonController (config, energy) =
                     }
 
                     {
-                        email = u.email;
+                        recipient = u.email;
                         body = emailbody;
                         subject = "ESHC Meter Readings"
                     }
@@ -165,7 +154,7 @@ type DaemonController (config, energy) =
                     }
 
                     {
-                        email = u.email;
+                        recipient = u.email;
                         body = emailbody;
                         subject = "ESHC Meter Readings"
                     }
@@ -193,4 +182,13 @@ type DaemonController (config, energy) =
 
         this.EnergyDatabase.SaveChanges() |> ignore
 
-        sprintf "%A" report
+        (* send emails *)
+        if send_email then
+            report 
+            |> List.iter (fun flat -> 
+                flat.emails
+                |> List.iter (fun email -> 
+                    EmailSender.send emailClient email
+                )
+            )
+        this.View("Report", report)

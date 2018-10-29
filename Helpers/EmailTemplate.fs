@@ -1,13 +1,10 @@
 module EnergyReporting.Helpers.EmailTemplate
 
-open System.Text
-open Microsoft.AspNetCore.Routing.Template
+open System
+open System.IO
+open System.Web
 open EnergyReporting.Database
 open EnergyReporting.ConfigHelper
-open System.Web
-open System.IO
-open System
-
 
 
 type UnreportedMetersEmail = {
@@ -26,7 +23,6 @@ type NeededMetersEmail = {
 
 let html b v =
     HttpUtility.HtmlEncode(v) |> fprintf b "%s" 
-
 
 let htmltemplate f v b () = 
     fprintf b "

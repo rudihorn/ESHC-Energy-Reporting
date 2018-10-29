@@ -1,5 +1,3 @@
-
-
 module EnergyReporting.Helpers.Null
 
 let option v =
