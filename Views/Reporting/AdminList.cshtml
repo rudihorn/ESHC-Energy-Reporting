@@ -1,0 +1,38 @@
+@model AdminList
+
+<h3>
+    Admin List
+</h3>
+
+<div class="alert alert-normal">
+    Welcome, @Model.auth.name!
+</div>
+
+<div class="card md-4">
+    <h4 class="card-header">Flats</h4>
+    <div class="card-body">
+        @foreach (var flat in Model.flatData) {
+            <div class="row my-3">
+                <div class="col-md-2">
+                    @Html.ActionLink("Flat " + flat.flat, "Report", new { flat = flat.flat, uid = Model.auth.user, key = Model.auth.key}, new { @class = "btn btn-primary" })
+                </div>
+ 
+                <div class="col-md-4">
+                @switch (flat.state) {
+                    case MeterData.state.Unreported ur:
+                        <div class="alert alert-danger">
+                            @ur.Item.Count() Unreported
+                        </div>
+                        break;
+                    case MeterData.state.LastReported lr:
+                        <div class="alert alert-warning">
+                            Last Reported: @lr.Item
+                        </div>
+                        break;
+                }
+                </div>
+            </div>
+
+        }
+    </div>
+</div>

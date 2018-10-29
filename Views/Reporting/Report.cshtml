@@ -1,0 +1,48 @@
+@model ReportEnergyViewModel
+
+
+<div class="container-fluid">
+    <div class="text-center mb-4">
+    </div>
+
+    <div class="card mb-4">
+        <h4 class="card-header">Report Meter Values</h4>
+        <div class="card-body">
+            <p class="card-text">
+                Use this form to report the energy readings.
+            </p>
+
+            <div class="row">
+                <label class="col-sm-2 col-form-label">Flat</label>
+                <div class="col-sm-10">
+                    @Html.TextBoxFor(m => m.Flat, new { @class = "form-control", @readonly = "" })
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @using(Html.BeginForm()) {
+        @for (int i = 0; i < Model.EnergyMeters.Length; i++) {
+            <div class="row my-3">
+                <div class="col-md-4">
+                    <label>Meter Serial</label>
+                    @Html.TextBoxFor(m => m.EnergyMeters[i].Serial, new { @class = "form-control", @readonly = "" })
+                </div>
+                <div class="col-md-4">
+                    <label>Reading</label>
+                    <div class="input-group">
+                        @Html.TextBoxFor(m => m.EnergyMeters[i].NewValue, new { @class = "form-control", placeholder = Model.EnergyMeters[i].LastValue })
+                       <div class="input-group-append">
+                            <span class="input-group-text">kWh</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <label>Last Reported</label>
+                    @Html.TextBoxFor(m => m.EnergyMeters[i].LastDate, new { @class = "form-control", @readonly = "" })
+                </div>
+            </div>
+        }  
+        <button type="submit" class="btn btn-primary">Submit</button>
+    }
+</div>

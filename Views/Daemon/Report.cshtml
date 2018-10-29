@@ -1,0 +1,49 @@
+@model IEnumerable<FlatStatus>
+@{
+    int flatCounter = 0;
+}
+@foreach (var flat in Model)
+{
+    flatCounter++;
+
+    <div class="card">
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-2">
+                    <input class="form-control" readonly value="@flat.flat" />
+                </div>
+                @switch (flat.warnLevel) {
+                    case FlatWarnLevel.Alert msg:
+                    <div class="col-md-8 alert alert-danger">
+                        @msg.Item
+                    </div>
+                        break;
+                    case FlatWarnLevel.Warning msg:
+                    <div class="alert alert-warning">
+                        @msg.Item
+                    </div>
+                        break;
+                    default:
+                        break;
+                }
+                <div class="col-md-2">
+                    <button type="button" class="btn" data-toggle="collapse" data-target=".collapse-email-flat-@flatCounter">Toggle Email</button>
+                </div>
+
+            </div>
+        </div>
+    @foreach (var email in flat.emails)
+    {
+        <div class="collapse collapse-email-flat-@flatCounter">
+            <div class="card card-body">
+                <h5>@email.subject</h5>
+                <h6>To: @email.email</h6>
+
+                <div class="card card-body">
+                    @email.body
+                </div>
+            </div>
+        </div>
+    }
+    </div>
+}
