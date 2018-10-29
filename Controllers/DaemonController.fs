@@ -10,8 +10,10 @@ open EnergyReporting
 open EnergyReporting.Helpers
 open EnergyReporting.Helpers.EmailTemplate
 open EnergyReporting.Database
-open EnergyReporting.Helpers.Ldap;
-open EnergyReporting.Helpers.MeterData;
+open EnergyReporting.Helpers.Ldap
+open EnergyReporting.Helpers.MeterData
+open EnergyReporting.Helpers
+open EnergyReporting.Helpers.EmailSender;
 
 
 type DaemonController (config, energy) =
@@ -28,6 +30,16 @@ type DaemonController (config, energy) =
     member private this.SerializeFlat (bld, flat, room) = 
         sprintf "%02d/%02d" bld flat
 
+
+    member this.TestEmail email = 
+        let client = EmailSender.client this.Configuration
+        let mail = {
+            recipient = email;
+            subject = "Test Email";
+            body = "Test Email";
+        }
+        EmailSender.send client mail
+        "Sent!"
 
     member this.TestReport () =
         this.View("Report", [{
