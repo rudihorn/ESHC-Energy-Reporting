@@ -6,15 +6,15 @@ module EnergyReporting.Helpers.MeterData
     open System.Linq
     open System.Text.RegularExpressions
 
-    type db = EnergyDatabase
-    type state = 
+    type DB = EnergyDatabase
+    type State = 
         | Unreported of Meter list
         | LastReported of DateTime
 
-    type flatData = {
+    type FlatData = {
         flat : string;
         meters : (Meter * MeterReading) list;
-        state : state;
+        state : State;
     }
 
     (* generates a random authentication key for the user *)
@@ -30,7 +30,7 @@ module EnergyReporting.Helpers.MeterData
         key
 
 
-    let getFlatsData (db:db) : flatData list = 
+    let getFlatsData (db:DB) : FlatData list = 
         let flats = 
             db.Meters
                 .Where(fun m -> m.disabled = false)

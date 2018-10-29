@@ -7,7 +7,7 @@ open Helpers.EmailSender
 
 type AdminList = {
     auth : MasterAuth;
-    flatData : flatData list;
+    flatData : FlatData list;
 }
 
 type FlatMeterStatus = 
