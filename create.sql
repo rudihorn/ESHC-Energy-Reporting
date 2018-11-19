@@ -49,6 +49,24 @@ ALTER TABLE public.meter_readings
   OWNER TO energy;
 
 
+-- Table: public.meter_types
+
+-- DROP TABLE public.meter_types;
+
+CREATE TABLE public.meter_types
+(
+type_id integer NOT NULL DEFAULT nextval('meter_types_type_id_seq'::regclass),
+name text NOT NULL,
+daily_quota real NOT NULL,
+CONSTRAINT meter_types_pkey PRIMARY KEY (type_id)
+)
+WITH (
+OIDS=FALSE
+);
+ALTER TABLE public.meter_types
+OWNER TO energy;
+
+
 -- Table: public.meters
 
 -- DROP TABLE public.meters;
@@ -61,8 +79,11 @@ CREATE TABLE public.meters
   disabled boolean NOT NULL DEFAULT false,
   meter_id bigint NOT NULL DEFAULT nextval('meters_meter_id_seq'::regclass),
   reset_value integer NOT NULL DEFAULT 100000,
-  daily_quota real NOT NULL DEFAULT 30,
-  CONSTRAINT meters_pkey PRIMARY KEY (meter_id)
+  meter_type integer NOT NULL DEFAULT 1,
+  CONSTRAINT meters_pkey PRIMARY KEY (meter_id),
+  CONSTRAINT meters_meter_type_fkey FOREIGN KEY (meter_type)
+    REFERENCES public.meter_types (type_id) MATCH SIMPLE
+    ON UPDATE NO ACTION ON DELETE NO ACTION
 )
 WITH (
   OIDS=FALSE

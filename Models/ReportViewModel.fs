@@ -14,18 +14,34 @@ type FlatMeterStatus =
     | UnreportedMeters of Meter list
     | LastReported of DateTime
 
-type FlatWarnLevel = 
-    | Ok
-    | Warning of string
-    | Alert of string
-    | StepIn
+
+module FlatWarnLevel =
+
+    type T = 
+        | Ok
+        | Warning of string
+        | Alert of string
+        | StepIn
+
+    let warnLevelClass =
+        function
+        | Ok -> ""
+        | Warning _ ->  "table-info"
+        | Alert _ -> "table-warning"
+        | StepIn -> "table-danger"
+
+    let warnLevelMsg =
+        function
+        | Warning str -> str
+        | Alert str -> str
+        | _ -> ""
 
 type FlatStatus = {
     flat : string;
     meterStatus : FlatMeterStatus;
     lastReminderSent : DateTime;
     emails : Email list;
-    warnLevel : FlatWarnLevel;
+    warnLevel : FlatWarnLevel.T;
 }
 
 type ReportViewModel = FlatStatus list

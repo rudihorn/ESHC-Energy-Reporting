@@ -24,8 +24,9 @@ module EnergyReporting.Helpers.MeterData
         let nextChar () = 
             let bytes : byte [] = Array.create 4 (byte 0)
             rng.GetBytes(bytes)
-            let i = BitConverter.ToInt32(bytes, 0)
-            set.[i % set.Length]
+            let i = BitConverter.ToUInt32(bytes, 0)
+            let len = uint32 set.Length
+            set.[i % len |> int]
         let key = [|1..32|] |> Array.map (fun _ -> nextChar ()) |> (fun r -> new String(r))
         key
 

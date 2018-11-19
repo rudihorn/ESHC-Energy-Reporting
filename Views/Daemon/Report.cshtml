@@ -2,48 +2,81 @@
 @{
     int flatCounter = 0;
 }
+
+<table class="table table-striped table-hover">
+    <thead>
+        <tr>
+            <th scope="col">flat</th>
+            <th scope="col">emails</th>
+            <th scope="col">state</th>
+        </tr>
+    </thead>
+    <tbody>
 @foreach (var flat in Model)
 {
+    int emailCounter = 0;
     flatCounter++;
 
-    <div class="card">
-        <div class="card-body">
-            <div class="row">
-                <div class="col-md-2">
-                    <input class="form-control" readonly value="@flat.flat" />
-                </div>
-                @switch (flat.warnLevel) {
-                    case FlatWarnLevel.Alert msg:
-                    <div class="col-md-8 alert alert-danger">
-                        @msg.Item
-                    </div>
-                        break;
-                    case FlatWarnLevel.Warning msg:
-                    <div class="alert alert-warning">
-                        @msg.Item
-                    </div>
-                        break;
-                    default:
-                        break;
-                }
-                <div class="col-md-2">
-                    <button type="button" class="btn" data-toggle="collapse" data-target=".collapse-email-flat-@flatCounter">Toggle Email</button>
-                </div>
+    <tr class="@FlatWarnLevel.warnLevelClass(flat.warnLevel)">
+        <th scope="row">@flat.flat</th>
+        <td>
+            <button type="button" class="btn btn-primary" data-toggle="modal" data-target="#email-mod-@flatCounter">
+                Show
+            </button>
+            @flat.emails.Length
+        </td>
+        <td>@FlatWarnLevel.warnLevelMsg(flat.warnLevel)</td>
+    </tr>
+}
+    </tbody>
+</table>
 
+@{
+flatCounter = 0;
+
+foreach (var flat in Model)
+{
+    int emailCounter = 0;
+    flatCounter++;
+
+    <div class="modal fade" id="email-mod-@flatCounter" tabindex="-1" role="dialog">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title">Emails</h5>
+                    <button type="button" class="close" data-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">&times;</span>
+                    </button>
+                </div>
+                <div class="modal-body">
+                    <ul class="nav nav-tabs" role="tablist" style="list-style: none">
+                        @foreach (var email in flat.emails){
+                            string cl = emailCounter == 0 ? "active" : "";
+                            <li class="nav-item">
+                                <a class="nav-link @cl" data-toggle="tab" role="tab" href="#email-@flatCounter-@emailCounter" href="#">Email @emailCounter</a>
+                            </li>
+                            emailCounter++;
+                        }
+                    </ul>
+                    <div class="tab-content">
+                        @{
+                            emailCounter = 0;
+                            foreach (var email in flat.emails)
+                            {
+                            string cl = emailCounter == 0 ? "active" : "";
+                            <div class="tab-pane @cl" id="email-@flatCounter-@emailCounter" roles="tabpanel">
+                                <h5>Subject: @email.subject</h5>
+                                <h5>To: @email.recipient</h5>
+                                @email.body
+                            </div>
+                            emailCounter++;
+                            }
+                        }
+                    </div>
+                </div> 
             </div>
         </div>
-    @foreach (var email in flat.emails)
-    {
-        <div class="collapse collapse-email-flat-@flatCounter">
-            <div class="card card-body">
-                <h5>@email.subject</h5>
-                <h6>To: @email.email</h6>
-
-                <div class="card card-body">
-                    @email.body
-                </div>
-            </div>
-        </div>
-    }
     </div>
 }
+}
+            

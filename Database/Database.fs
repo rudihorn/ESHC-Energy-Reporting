@@ -18,32 +18,46 @@ open System.Collections
 type public Meter() =
 
     [<Key()>]
-    [<Column("meter_id")>]
-    member val meterId : int64 = 0L with get,set 
+    member val meter_id : int64 = 0L with get,set 
 
     member val disabled : bool = false with get,set 
     member val mpan : string = "" with get,set 
     member val serial : string = "" with get,set 
     member val flat : string = "" with get,set 
     member val reset_value : int = 10000 with get,set
-    member val daily_quota : float = 30. with get,set
+
+    member val meter_type : int = 0 with get,set
 
     [<DefaultValue>] val mutable readings : ICollection<MeterReading>
-    [<ForeignKey("meterId")>]
+    [<ForeignKey("meter_id")>]
     member x.Readings with get () = x.readings and set v = x.readings <- v
+
+    [<DefaultValue>] val mutable meterType : MeterType
+    member x.MeterType with get () = x.meterType and set v = x.meterType <- v
+
+and [<Table("meter_types")>][<AllowNullLiteral>] public MeterType() =
+    [<Key()>]
+    member val type_id : int = 0 with get,set
+
+    member val name : string = "" with get,set
+
+    member val daily_quota : float = 30.0 with get,set
+
+    [<DefaultValue>] val mutable meters : ICollection<Meter>
+    [<ForeignKey("meter_type")>]
+    member x.Meters with get () = x.meters and set v = x.meters <- v
+
 
 and [<Table("meter_readings")>][<AllowNullLiteral>] public MeterReading() =
     [<Key()>]
-    [<Column("reading_id")>]
-    member val readingId : int64 = 0L with get,set
+    member val reading_id : int64 = 0L with get,set
 
     member val value : int = 0 with get,set
 
     member val date : DateTime = DateTime.Today with get,set
 
     [<ForeignKey("meter")>]
-    [<Column("meter_id")>]
-    member val meterId : int64 = 0L with get,set
+    member val meter_id : int64 = 0L with get,set
     [<DefaultValue>] val mutable meter : Meter
     member x.Meter with get () = x.meter and set v = x.meter <- v
 

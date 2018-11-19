@@ -16,8 +16,24 @@ open EnergyReporting.Helpers.EmailSender;
 
 type DaemonController (config, energy) =
     inherit Controller()
+
     member val Configuration : IConfiguration = config with get, set
     member val EnergyDatabase : EnergyDatabase = energy with get,set
+
+    member private this.getUserAuth u flat = 
+        let mutable user = 
+            this.EnergyDatabase.UserAuths
+                .FirstOrDefault(fun u -> u.user = u.user)
+        if user = null then
+            user <- new UserAuth (
+                user = u.user, 
+                flat = flat, 
+                key = MeterData.genAuthKey ()
+            )
+            this.EnergyDatabase.UserAuths.Add(user) |> ignore
+        else
+            user.flat <- flat
+        user
 
     member this.TestEmail email = 
         let client = EmailSender.client this.Configuration
@@ -33,7 +49,7 @@ type DaemonController (config, energy) =
         this.View("Report", [{
             flat = "34/99Z";
             meterStatus = UnreportedMeters [];
-            warnLevel = sprintf "Unreported Meters" |> Alert;
+            warnLevel = sprintf "Unreported Meters" |> FlatWarnLevel.Alert;
             emails = [{
                 recipient = "test@example.com";
                 subject = "Energy email";
@@ -48,6 +64,8 @@ type DaemonController (config, energy) =
         }])
 
     member this.Index (send_email : bool) =
+        let today = DateTime.Today
+
         let get_reminder flat = 
             this.EnergyDatabase.Reminders
                 .FirstOrDefault(fun r -> r.flat = flat)
@@ -58,28 +76,11 @@ type DaemonController (config, energy) =
                 reminder <- new Reminder(flat = flat)
                 this.EnergyDatabase.Reminders.Add(reminder) |> ignore
             else    
-                reminder.lastSent <- DateTime.Today
-
-
-        let get_user_auth u flat = 
-            let mutable user = 
-                this.EnergyDatabase.UserAuths
-                    .FirstOrDefault(fun u -> u.user = u.user)
-            if user = null then
-                user <- new UserAuth (
-                    user = u.user, 
-                    flat = flat, 
-                    key = MeterData.genAuthKey ()
-                )
-                this.EnergyDatabase.UserAuths.Add(user) |> ignore
-            else
-                user.flat <- flat
-            user
+                reminder.lastSent <- today
 
         let emailConfig = ConfigHelper.emailConfig this.Configuration
         let emailClient = EmailSender.client this.Configuration
         let policyConfig = ConfigHelper.policyConfig this.Configuration
-
 
         let get_link (userauth : UserAuth) = 
             sprintf "%s/Reporting/Report?auth=%s&user=%s"
@@ -103,7 +104,7 @@ type DaemonController (config, energy) =
             match data.state with 
             | LastReported lastReportedDay ->
                 let emails = users |> List.map (fun (u,_) -> 
-                    let auth = get_user_auth u flat
+                    let auth = this.getUserAuth u flat
                     let link = get_link auth
                         
                     let emailbody = EmailTemplate.build_string EmailTemplate.neededMetersEmail {
@@ -121,10 +122,10 @@ type DaemonController (config, energy) =
                 )
 
                 let emails = 
-                    if DateTime.Today.Subtract(lastReportedDay).TotalDays >= float policyConfig.readingDays then  
+                    if today.Subtract(lastReportedDay).TotalDays >= float policyConfig.readingDays then  
                         let reminder = get_reminder flat
-                        if reminder <> null && DateTime.Today.Subtract(reminder.lastSent).TotalDays >= float policyConfig.reminderDays then
-                            update_reminder flat reminder
+                        if reminder <> null && today.Subtract(reminder.lastSent).TotalDays >= float policyConfig.reminderDays then
+                            (* update_reminder flat reminder *)
                             emails
                         else 
                             []
@@ -135,15 +136,15 @@ type DaemonController (config, energy) =
                 let state : FlatStatus = {
                     flat = flat;
                     meterStatus = EnergyReporting.LastReported lastReportedDay;
-                    warnLevel = Alert "Needs to be reported";
+                    warnLevel = FlatWarnLevel.Alert "Needs to be reported";
                     emails = emails;
-                    lastReminderSent = DateTime.Today;
+                    lastReminderSent = today;
                 }
 
                 state
             | Unreported unreported ->
                 let emails = users |> List.map (fun (u,_) -> 
-                    let auth = get_user_auth u flat
+                    let auth = this.getUserAuth u flat
                     let link = get_link auth
                         
                     let emailbody = EmailTemplate.build_string EmailTemplate.unreportedMetersEmail {
@@ -162,8 +163,8 @@ type DaemonController (config, energy) =
 
                 let reminder = get_reminder flat
                 let emails = 
-                    if reminder <> null && DateTime.Today.Subtract(reminder.lastSent).TotalDays >= float policyConfig.reminderDays then
-                        update_reminder flat reminder
+                    if reminder <> null && today.Subtract(reminder.lastSent).TotalDays >= float policyConfig.reminderDays then
+                        (* update_reminder flat reminder *)
                         emails
                     else 
                         []
@@ -172,7 +173,7 @@ type DaemonController (config, energy) =
                 let state = {
                     flat = flat;
                     meterStatus = UnreportedMeters unreported;
-                    warnLevel = unreported |> List.map (fun m -> m.serial) |> sprintf "Unreported Meters %A" |> Alert;
+                    warnLevel = unreported |> List.map (fun m -> m.serial) |> sprintf "Unreported Meters %A" |> FlatWarnLevel.Alert;
                     emails = emails;
                     lastReminderSent = DateTime.Today;
                 }

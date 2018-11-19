@@ -41,11 +41,8 @@ type ReportingController (energy) =
             )
         vm
 
-
-
     member this.Index () = 
         "Reporting"
-
 
     member private this.AuthMaster uid key =    
         let ma = this.EnergyDatabase.MasterAuths.FirstOrDefault(fun ma -> ma.user = uid && ma.key = key)
@@ -75,10 +72,14 @@ type ReportingController (energy) =
     [<HttpPost>]
     member this.Report (uid, key, flat : string, model: ReportEnergyViewModel) =
         let auth = 
-            this.AuthMaster uid key 
+            this.AuthMaster uid key
             |> Option.map (fun auth -> Some auth.name)
-            |> Option.defaultWith (fun () -> this.AuthUser uid key flat |> Option.map (fun auth -> auth.name)) 
+            |> Option.defaultWith (fun () -> this.AuthUser uid key flat|> Option.map (fun auth -> auth.name))
+        
+        this.PostReport flat model
 
+
+    member this.PostReport flat model =
         let meterValues = 
             model.EnergyMeters
             |> Seq.mapi (fun i m -> i,m)
@@ -91,7 +92,7 @@ type ReportingController (energy) =
                 let r = m' |> Null.map (fun m ->
                     this.EnergyDatabase.MeterReadings
                         .OrderByDescending(fun r -> r.date)
-                        .FirstOrDefault(fun r -> r.meterId = m.meterId)
+                        .FirstOrDefault(fun r -> r.meter_id = m.meter_id)
                 )
                 i,m, m', r, v
             )
@@ -107,14 +108,14 @@ type ReportingController (energy) =
                 let difference = (v - r.value + m'.reset_value) % m'.reset_value
                 let quota = float difference / days
 
-                if quota > m'.daily_quota then
+                if quota > m'.MeterType.daily_quota then
                     this.ModelState.AddModelError(sprintf "EnergyMeters[%d].NewValue" i, "This value doesn't seem right. If you are sure it is correct please send us an email with the meter picture.")
         )
 
         if this.ModelState.IsValid then 
             actualMeters
             |> List.iter (fun (i,m,m',r,v) -> 
-                let entry = new MeterReading (value = v, date = DateTime.Today, meterId = m'.meterId)
+                let entry = new MeterReading (value = v, date = DateTime.Today, meter_id = m'.meter_id)
                 this.EnergyDatabase.MeterReadings.Add(entry) |> ignore
             )
             this.EnergyDatabase.SaveChanges() |> ignore

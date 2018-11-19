@@ -19,12 +19,12 @@
  
                 <div class="col-md-4">
                 @switch (flat.state) {
-                    case MeterData.state.Unreported ur:
+                    case MeterData.State.Unreported ur:
                         <div class="alert alert-danger">
                             @ur.Item.Count() Unreported
                         </div>
                         break;
-                    case MeterData.state.LastReported lr:
+                    case MeterData.State.LastReported lr:
                         <div class="alert alert-warning">
                             Last Reported: @lr.Item
                         </div>

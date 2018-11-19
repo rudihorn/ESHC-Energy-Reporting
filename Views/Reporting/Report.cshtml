@@ -31,7 +31,7 @@
                 <div class="col-md-4">
                     <label>Reading</label>
                     <div class="input-group">
-                        @Html.TextBoxFor(m => m.EnergyMeters[i].NewValue, new { @class = "form-control", placeholder = Model.EnergyMeters[i].LastValue })
+                        @Html.TextBoxFor(m => m.EnergyMeters[i].NewValue, new { @class = "form-control", @type = "number", placeholder = Model.EnergyMeters[i].LastValue })
                        <div class="input-group-append">
                             <span class="input-group-text">kWh</span>
                         </div>
