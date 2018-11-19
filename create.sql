@@ -10,6 +10,7 @@ CREATE DATABASE energy
        LC_CTYPE = 'en_US.UTF-8'
        CONNECTION LIMIT = -1;
 
+
 -- Table: public.master_auths
 
 -- DROP TABLE public.master_auths;
@@ -25,27 +26,6 @@ WITH (
   OIDS=FALSE
 );
 ALTER TABLE public.master_auths
-  OWNER TO energy;
-
--- Table: public.meter_readings
-
--- DROP TABLE public.meter_readings;
-
-CREATE TABLE public.meter_readings
-(
-  date date,
-  value integer,
-  meter_id bigint,
-  reading_id bigint NOT NULL DEFAULT nextval('meter_readings_reading_id_seq'::regclass),
-  CONSTRAINT meter_readings_pkey PRIMARY KEY (reading_id),
-  CONSTRAINT meter_readings_meter_id_fkey FOREIGN KEY (meter_id)
-      REFERENCES public.meters (meter_id) MATCH SIMPLE
-      ON UPDATE NO ACTION ON DELETE RESTRICT
-)
-WITH (
-  OIDS=FALSE
-);
-ALTER TABLE public.meter_readings
   OWNER TO energy;
 
 
@@ -128,3 +108,24 @@ WITH (
 ALTER TABLE public.user_auths
   OWNER TO energy;
 
+
+-- Table: public.meter_readings
+
+-- DROP TABLE public.meter_readings;
+
+CREATE TABLE public.meter_readings
+(
+  date date,
+  value integer,
+  meter_id bigint,
+  reading_id bigint NOT NULL DEFAULT nextval('meter_readings_reading_id_seq'::regclass),
+  CONSTRAINT meter_readings_pkey PRIMARY KEY (reading_id),
+  CONSTRAINT meter_readings_meter_id_fkey FOREIGN KEY (meter_id)
+      REFERENCES public.meters (meter_id) MATCH SIMPLE
+      ON UPDATE NO ACTION ON DELETE RESTRICT
+)
+WITH (
+  OIDS=FALSE
+);
+ALTER TABLE public.meter_readings
+  OWNER TO energy;
