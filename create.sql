@@ -35,7 +35,7 @@ ALTER TABLE public.master_auths
 
 CREATE TABLE public.meter_types
 (
-type_id integer NOT NULL DEFAULT nextval('meter_types_type_id_seq'::regclass),
+type_id serial,
 name text NOT NULL,
 daily_quota real NOT NULL,
 CONSTRAINT meter_types_pkey PRIMARY KEY (type_id)
@@ -57,7 +57,7 @@ CREATE TABLE public.meters
   mpan text,
   serial text,
   disabled boolean NOT NULL DEFAULT false,
-  meter_id bigint NOT NULL DEFAULT nextval('meters_meter_id_seq'::regclass),
+  meter_id bigserial,
   reset_value integer NOT NULL DEFAULT 100000,
   meter_type integer NOT NULL DEFAULT 1,
   CONSTRAINT meters_pkey PRIMARY KEY (meter_id),
@@ -118,7 +118,7 @@ CREATE TABLE public.meter_readings
   date date,
   value integer,
   meter_id bigint,
-  reading_id bigint NOT NULL DEFAULT nextval('meter_readings_reading_id_seq'::regclass),
+  reading_id bigserial,
   CONSTRAINT meter_readings_pkey PRIMARY KEY (reading_id),
   CONSTRAINT meter_readings_meter_id_fkey FOREIGN KEY (meter_id)
       REFERENCES public.meters (meter_id) MATCH SIMPLE
