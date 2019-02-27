@@ -8,13 +8,13 @@ open EnergyReporting
 open EnergyReporting.Helpers
 open EnergyReporting.Database
 
-type ReportingController (energy) =
+type ReportingController (config, energy) =
     inherit Controller()
 
+    member val Configuration : IConfiguration = config with get, set
     member val EnergyDatabase : EnergyDatabase = energy with get, set
-    member val Configuration : IConfiguration = null with get, set
 
-    member private this.reportEnergyViewModel flat = 
+    member private this.ReportEnergyViewModel flat = 
         let meters = query {
             for m in this.EnergyDatabase.Meters do
             where (m.flat = flat)
@@ -27,33 +27,26 @@ type ReportingController (energy) =
         let mrs = 
             Seq.zip meters readings
             |> Seq.map (fun (m,r) -> 
-                new EnergyMeterViewModel (
-                    Serial = m.serial,
-                    LastDate = (if r = null then "" else r.date.ToString("yyyy-MM-dd")),
-                    LastValue = (if r = null then "<no value>" else r.value.ToString())
-                )) 
+                let lastDate = Null.map_def (fun _ -> r.date.ToString("yyyy-MM-dd")) "" r 
+                let lastValue = Null.map_def (fun _ -> r.value.ToString()) "<no value>" r
+                EnergyMeterViewModel (Serial = m.serial, LastDate = lastDate, LastValue = lastValue)
+            )
 
         let date = DateTime.Today.Subtract(TimeSpan.FromDays(3.0))
         let vm = 
-            new ReportEnergyViewModel (
-                Flat = flat,
-                EnergyMeters = Array.ofSeq mrs
-            )
+            ReportEnergyViewModel (Flat = flat, EnergyMeters = Array.ofSeq mrs)
         vm
 
     member this.Index () = 
         "Reporting"
 
-    member private this.AuthMaster uid key =    
-        let ma = this.EnergyDatabase.MasterAuths.FirstOrDefault(fun ma -> ma.user = uid && ma.key = key)
-        Null.option ma
-        
-    member this.AuthUser uid key flat =
-        let auth = this.EnergyDatabase.UserAuths.FirstOrDefault(fun auth -> auth.user = uid && auth.key = key && auth.flat = flat)
-        Null.option auth
+    member this.AuthAny uid key flat f =
+        match Authentication.authAny this.EnergyDatabase uid key flat with
+        | None -> this.View("AccessDenied") :> ActionResult
+        | Some auth -> f auth
 
     member this.AdminList uid key =
-        let admin = this.AuthMaster uid key 
+        let admin = Authentication.authMaster this.EnergyDatabase uid key 
         match admin with
         | None -> this.View("AccessDenied")
         | Some admin -> 
@@ -61,29 +54,24 @@ type ReportingController (energy) =
             this.View({
                 auth = admin;
                 flatData = flatData;
-            })
+                policy = ConfigHelper.policyConfig this.Configuration})
 
 
     member this.Report (uid, key, flat : string) =
-        let admin = this.AuthMaster uid key 
-        let model = this.reportEnergyViewModel flat
-        this.View(model)
+        this.AuthAny uid key flat (fun auth -> 
+            let model = this.ReportEnergyViewModel flat
+            this.View(model) :> ActionResult
+        )
 
     [<HttpPost>]
     member this.Report (uid, key, flat : string, model: ReportEnergyViewModel) =
-        let auth = 
-            this.AuthMaster uid key
-            |> Option.map (fun auth -> Some auth.name)
-            |> Option.defaultWith (fun () -> this.AuthUser uid key flat|> Option.map (fun auth -> auth.name))
-        
-        this.PostReport flat model
+        this.AuthAny uid key flat (this.PostReport flat model)
 
-
-    member this.PostReport flat model =
+    member private this.PostReport flat model auth : ActionResult =
         let meterValues = 
             model.EnergyMeters
-            |> Seq.mapi (fun i m -> i,m)
-            |> Seq.choose (fun (i,m) -> m.NewValueOpt() |> Option.map (fun v -> (i,m,v)))
+            |> Seq.mapi (fun i m -> (i, m))
+            |> Seq.choose (fun (i,m) -> m.NewValueOpt() |> Option.map (fun v -> (i, m, v)))
 
         let actualMeters = 
             meterValues
@@ -94,17 +82,19 @@ type ReportingController (energy) =
                         .OrderByDescending(fun r -> r.date)
                         .FirstOrDefault(fun r -> r.meter_id = m.meter_id)
                 )
-                i,m, m', r, v
+                (i, m, m', r, v)
             )
             |> List.ofSeq
 
         actualMeters |> List.iter (fun (i,m,m',r,v) ->
-            if m' = null then
+            match m' with
+            | null ->
                 let message = sprintf "The meter '%s' does not exist or the user is not authorized." m.Serial
                 this.ModelState.AddModelError("", message)
+            | _ -> 
+                let meterType = this.EnergyDatabase.MeterTypes.Find(m'.meter_type)
 
-            if r <> null then
-                let days = Math.Min(0.5, DateTime.Today.Subtract(r.date).TotalDays)
+                let days = Math.Max(0.5, DateTime.Today.Subtract(r.date).TotalDays)
                 let difference = (v - r.value + m'.reset_value) % m'.reset_value
                 let quota = float difference / days
 
@@ -115,11 +105,21 @@ type ReportingController (energy) =
         if this.ModelState.IsValid then 
             actualMeters
             |> List.iter (fun (i,m,m',r,v) -> 
-                let entry = new MeterReading (value = v, date = DateTime.Today, meter_id = m'.meter_id)
+                let entry = MeterReading (value = v, date = DateTime.Today, meter_id = m'.meter_id)
                 this.EnergyDatabase.MeterReadings.Add(entry) |> ignore
             )
             this.EnergyDatabase.SaveChanges() |> ignore
+            let model = this.ReportEnergyViewModel flat
 
-        let model = this.reportEnergyViewModel flat
-
-        this.View(model)
+            match auth.is_master with
+            | true -> 
+                let route = dict [
+                    ("uid", box auth.uid);
+                    ("key", box auth.key);
+                    ]
+                this.RedirectToAction("AdminList", null, route, "flat-" + flat.Replace('/', '-')) :> ActionResult
+            | false -> 
+                this.ModelState.Clear()
+                this.View(model) :> ActionResult
+        else 
+            this.View(model) :> ActionResult

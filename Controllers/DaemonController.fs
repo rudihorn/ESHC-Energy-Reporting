@@ -20,21 +20,6 @@ type DaemonController (config, energy) =
     member val Configuration : IConfiguration = config with get, set
     member val EnergyDatabase : EnergyDatabase = energy with get,set
 
-    member private this.getUserAuth u flat = 
-        let mutable user = 
-            this.EnergyDatabase.UserAuths
-                .FirstOrDefault(fun u -> u.user = u.user)
-        if user = null then
-            user <- new UserAuth (
-                user = u.user, 
-                flat = flat, 
-                key = MeterData.genAuthKey ()
-            )
-            this.EnergyDatabase.UserAuths.Add(user) |> ignore
-        else
-            user.flat <- flat
-        user
-
     member this.TestEmail email = 
         let client = EmailSender.client this.Configuration
         let mail = {
@@ -69,14 +54,14 @@ type DaemonController (config, energy) =
         let get_reminder flat = 
             this.EnergyDatabase.Reminders
                 .FirstOrDefault(fun r -> r.flat = flat)
+            |> Null.option
 
-        let update_reminder flat reminder = 
-            let mutable reminder = reminder
-            if reminder = null then 
-                reminder <- new Reminder(flat = flat)
+        let update_reminder flat (reminder : Reminder option) = 
+            match reminder with 
+            | None -> 
+                let reminder = new Reminder(flat = flat, lastSent = today)
                 this.EnergyDatabase.Reminders.Add(reminder) |> ignore
-            else    
-                reminder.lastSent <- today
+            | Some r -> r.lastSent <- today
 
         let emailConfig = ConfigHelper.emailConfig this.Configuration
         let emailClient = EmailSender.client this.Configuration
@@ -97,6 +82,12 @@ type DaemonController (config, energy) =
 
         let flatUsers flat = users |> List.filter (fun (_,sf) -> flat = sf)
 
+        let email recipient body = {
+            recipient = recipient;
+            body = body;
+            subject = "ESHC Meter Readings"
+        }
+
         let report = meterData |> List.map (fun data ->
             let flat = data.flat
             let meters = data.meters
@@ -104,34 +95,24 @@ type DaemonController (config, energy) =
             match data.state with 
             | LastReported lastReportedDay ->
                 let emails = users |> List.map (fun (u,_) -> 
-                    let auth = this.getUserAuth u flat
+                    let auth = Authentication.getUserAuth this.EnergyDatabase u.user flat
                     let link = get_link auth
                         
-                    let emailbody = EmailTemplate.build_string EmailTemplate.neededMetersEmail {
+                    let body = FormatHelper.buildString EmailTemplate.neededMetersEmail {
                         config = emailConfig;
                         meters = meters;
                         link = link;
                         name = u.name;
                     }
 
-                    {
-                        recipient = u.email;
-                        body = emailbody;
-                        subject = "ESHC Meter Readings"
-                    }
+                    email u.email body
                 )
-
-                let emails = 
-                    if today.Subtract(lastReportedDay).TotalDays >= float policyConfig.readingDays then  
-                        let reminder = get_reminder flat
-                        if reminder <> null && today.Subtract(reminder.lastSent).TotalDays >= float policyConfig.reminderDays then
-                            (* update_reminder flat reminder *)
-                            emails
-                        else 
-                            []
-                    else
-                        []
-
+                let requiresReporting = today.Subtract(lastReportedDay).TotalDays >= float policyConfig.readingDays in
+                let reminder = if requiresReporting then get_reminder flat else None
+                let daysSinceReport = reminder |> Option.map (fun r -> today.Subtract(r.lastSent).TotalDays)
+                let requiresReminding = requiresReporting && daysSinceReport |> Option.map (fun r -> r >= float policyConfig.reminderDays) |> Option.defaultValue true
+                if requiresReminding then update_reminder flat reminder
+                let emails = if requiresReminding then emails else []
                 (* there are meter with no values *)
                 let state : FlatStatus = {
                     flat = flat;
@@ -144,32 +125,28 @@ type DaemonController (config, energy) =
                 state
             | Unreported unreported ->
                 let emails = users |> List.map (fun (u,_) -> 
-                    let auth = this.getUserAuth u flat
+                    let auth = Authentication.getUserAuth this.EnergyDatabase u.user flat
                     let link = get_link auth
                         
-                    let emailbody = EmailTemplate.build_string EmailTemplate.unreportedMetersEmail {
+                    let body = FormatHelper.buildString EmailTemplate.unreportedMetersEmail {
                         config = emailConfig;
                         unreported = unreported;
                         link = link;
                         name = u.name;
                     }
 
-                    {
-                        recipient = u.email;
-                        body = emailbody;
-                        subject = "ESHC Meter Readings"
-                    }
+                    email u.email body
                 )
 
-                let reminder = get_reminder flat
-                let emails = 
-                    if reminder <> null && today.Subtract(reminder.lastSent).TotalDays >= float policyConfig.reminderDays then
-                        (* update_reminder flat reminder *)
-                        emails
-                    else 
-                        []
+                let remind = 
+                    get_reminder flat
+                    |> Option.map (fun r -> 
+                        DateTime.Today.Subtract(r.lastSent).TotalDays >= float policyConfig.reminderDays
+                    )
+                    |> Option.defaultValue true
+                let emails =  if remind then emails else []
 
-                (* there are meter with no values *)
+                (* there are meters with no values *)
                 let state = {
                     flat = flat;
                     meterStatus = UnreportedMeters unreported;

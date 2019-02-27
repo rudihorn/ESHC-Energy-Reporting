@@ -33,6 +33,7 @@ type public Meter() =
     member x.Readings with get () = x.readings and set v = x.readings <- v
 
     [<DefaultValue>] val mutable meterType : MeterType
+    [<ForeignKey("meter_type")>]
     member x.MeterType with get () = x.meterType and set v = x.meterType <- v
 
 and [<Table("meter_types")>][<AllowNullLiteral>] public MeterType() =
@@ -44,7 +45,7 @@ and [<Table("meter_types")>][<AllowNullLiteral>] public MeterType() =
     member val daily_quota : float = 30.0 with get,set
 
     [<DefaultValue>] val mutable meters : ICollection<Meter>
-    [<ForeignKey("meter_type")>]
+    [<InverseProperty("MeterType")>]
     member x.Meters with get () = x.meters and set v = x.meters <- v
 
 
@@ -99,6 +100,9 @@ type public EnergyDatabase(options) =
     [<DefaultValue>] val mutable private meterReadings : DbSet<MeterReading>
     member x.MeterReadings with get () = x.meterReadings and set v = x.meterReadings <- v
 
+    [<DefaultValue>] val mutable private meterTypes : DbSet<MeterType>
+    member x.MeterTypes with get () = x.meterTypes and set v = x.meterTypes <- v
+
     [<DefaultValue>] val mutable private reminders : DbSet<Reminder>
     member x.Reminders with get () = x.reminders and set v = x.reminders <- v
 
@@ -106,4 +110,4 @@ type public EnergyDatabase(options) =
     member x.UserAuths with get () = x.userAuths and set v = x.userAuths <- v
 
     [<DefaultValue>] val mutable private masterAuths : DbSet<MasterAuth>
-    member x.MasterAuths with get () = x.masterAuths and set v = x.masterAuths <- v
+    member public x.MasterAuths with get () = x.masterAuths and set v = x.masterAuths <- v

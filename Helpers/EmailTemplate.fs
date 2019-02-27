@@ -126,10 +126,3 @@ let unreportedMetersEmail b (mail : UnreportedMetersEmail) =
         unreportedMeters mail.unreported
         reportMessage mail.link
         signature mail.config
-
-let build_string f v = 
-    using (new StringWriter()) (fun sw ->
-            fprintf sw "%a" f v
-            sw.GetStringBuilder().ToString()
-    )
-

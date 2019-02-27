@@ -12,9 +12,11 @@
     <h4 class="card-header">Flats</h4>
     <div class="card-body">
         @foreach (var flat in Model.flatData) {
-            <div class="row my-3">
+            var flatId = "flat-" + flat.flat.Replace('/', '-');
+
+            <div id="@flatId" class="row my-3">
                 <div class="col-md-2">
-                    @Html.ActionLink("Flat " + flat.flat, "Report", new { flat = flat.flat, uid = Model.auth.user, key = Model.auth.key}, new { @class = "btn btn-primary" })
+                    @Html.ActionLink("Flat " + flat.flat, "Report", new { flat = flat.flat, uid = Model.auth.uid, key = Model.auth.key}, new { @class = "btn btn-primary" })
                 </div>
  
                 <div class="col-md-4">
@@ -25,9 +27,16 @@
                         </div>
                         break;
                     case MeterData.State.LastReported lr:
-                        <div class="alert alert-warning">
-                            Last Reported: @lr.Item
-                        </div>
+                        if (flat.Days() > 20) {
+                            <div class="alert alert-warning">
+                                Last Reported: @lr.Item.ToString("yyyy-MM-dd")
+                            </div>
+                        }
+                        else {
+                            <div class="alert alert-info">
+                                Last Reported: @lr.Item.ToString("yyyy-MM-dd")
+                            </div>
+                        }
                         break;
                 }
                 </div>
